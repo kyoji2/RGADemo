@@ -1,0 +1,785 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Set Ant Project Name -->
+<project name="RGADemo" default="main" basedir=".">
+	
+	<property environment="env."/>
+	
+	<!-- System environment must contain FLEX_HOME variable that points to Flex SDK -->
+	<property name="FLEX_HOME" location="${env.FLEX_HOME}"/>
+
+	<property name="version" value="0.7.0" />
+	
+	<!-- If you are using FDT, set this value to true. -->
+	<!-- To assure that FDT's tasks work, the task has to run in the same JRE (Java Runtime Environment) as Eclipse. see FDT's help. -->
+	<property name="fdt" value="false" />
+
+	<property name="build" value="build" />
+	<property name="buildInfo" value="build.txt" />
+
+	<property name="src" location="src" />
+	<property name="lib" location="libs" />
+	<property name="bin" location="bin" />
+	<property name="ide" location="ide" />
+	<property name="settings" location=".settings" />
+
+	<property file="${build}/flex.properties" />
+	<property file="${build}/gaia.properties" />
+
+	<property name="templates" location="${build}/templates" />
+
+	<import file="${build}/lib/textutils.xml" />
+	<import file="${build}/lib/gaiautils.xml" />
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${build}/lib/ant-contrib-1.0b3.jar" />
+	<taskdef resource="flexTasks.tasks" classpath="${FLEX_HOME}/ant/lib/flexTasks.jar" />
+	<taskdef name="xmltask" classpath="${build}/lib/xmltask-v1.15.1.jar" classname="com.oopsconsultancy.xmltask.ant.XmlTask" />
+	
+	<property name="pages.full.package" value="${project.package}.${pages.package}" />
+	
+	<replace-dot property="project.src" input="${src}/${project.package}" />
+	
+	<property name="pages.src" value="${project.src}/${pages.package}" />
+
+
+	<target name="main" depends="scaffolding, seo-scaffolding, release">
+		<echo message="main" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${src}" />
+		<delete dir="${ide}" />
+		<mkdir dir="${src}" />
+		<mkdir dir="${ide}" />
+	</target>
+
+	<target name="scaffolding" description="scaffolding" depends="create-base, create-main, create-preload, create-pages, create-static-page" />
+	<target name="seo-scaffolding" description="seo-scaffolding" depends="seo-html" />
+	<target name="compile-all" description="compile-all" depends="compile-pages, compile-preloader, compile-main" />
+	<target name="debug-all" description="debug-all" depends="debug-pages, debug-preloader, debug-main" />
+	<target name="release" description="release" depends="compile-all, create-build-info" />
+
+	<!-- Scaffolding -->
+	<target name="create-base">
+		<mkdir dir="${pages.src}" />
+		<mkdir dir="${lib}" />
+		<mkdir dir="${bin}" />
+		<mkdir dir="${ide}" />
+		<mkdir dir="${bin}/js" />
+		<mkdir dir="${bin}/xml" />
+		
+		<copy todir="${src}" overwrite="false" encoding="UTF-8">
+			<fileset dir="${templates}/src/" />
+		</copy>
+		
+		<copy todir="${project.src}" overwrite="false" encoding="UTF-8">
+			<fileset dir="${templates}/project-src" />
+			<filterchain>
+				<replacetokens>
+					<token key="PACKAGENAME" value="${project.package}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+
+		<copy todir="${lib}" overwrite="false" encoding="UTF-8">
+			<fileset dir="${templates}/lib" />
+		</copy>
+
+		<copy file="${templates}/Scaffold.as" tofile="${pages.src}/Scaffold.as" overwrite="false" encoding="UTF-8">
+			<filterchain>
+				<replacetokens>
+					<token key="PACKAGENAME" value="${pages.full.package}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+
+		<copy file="${templates}/PreloaderScaffold.as" tofile="${pages.src}/PreloaderScaffold.as" overwrite="false" encoding="UTF-8">
+			<filterchain>
+				<replacetokens>
+					<token key="PACKAGENAME" value="${pages.full.package}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+
+		<copy todir="${bin}/js" overwrite="false" encoding="UTF-8">
+			<fileset dir="${templates}/www/js" />
+		</copy>
+
+		<copy file="${templates}/www/expressInstall.swf" tofile="${bin}/expressInstall.swf" overwrite="false" encoding="UTF-8" />
+		<copy file="${templates}/www/scaffold.swf" tofile="${bin}/scaffold.swf" overwrite="false" encoding="UTF-8" />
+		
+		<copy file="${templates}/www/xml/site.xml" tofile="${bin}/xml/site.xml" overwrite="false" encoding="UTF-8">
+			<filterchain>
+				<replacetokens>
+					<token key="title" value="${appname}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+		
+		<copy file="${templates}/gitignore" tofile=".gitignore" overwrite="false" encoding="UTF-8" />
+	</target>
+
+	<target name="create-main">
+		<copy file="${templates}/Main.as" tofile="${src}/Main.as" overwrite="false" encoding="UTF-8">
+			<filterchain>
+				<replacetokens>
+					<token key="width" value="${width}" />
+					<token key="height" value="${height}" />
+					<token key="framerate" value="${framerate}" />
+					<token key="bgcolor" value="${bgcolor}" />
+					<token key="PACKAGENAME" value="${project.package}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+		
+		<create-xfl name="main" document="Main" />
+		<create-launch name="Main" document="src/Main.as" swf="bin/main.swf" />
+	</target>
+	
+	<target name="create-preload">
+		<copy file="${templates}/Preloader.as" tofile="${pages.src}/Preloader.as" overwrite="false" encoding="UTF-8">
+			<filterchain>
+				<replacetokens>
+					<token key="width" value="${width}" />
+					<token key="height" value="${height}" />
+					<token key="framerate" value="${framerate}" />
+					<token key="bgcolor" value="${bgcolor}" />
+					<token key="PACKAGENAME" value="${pages.full.package}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+		
+		<create-xfl name="preload" document="${pages.full.package}.Preloader" />
+		
+		<var name="relative.pages.src" unset="true" />
+		<replace-dot property="relative.pages.src" input="src/${pages.full.package}" />
+		<create-launch name="Preload" document="${relative.pages.src}/Preloader.as" swf="bin/preload.swf" />
+	</target>
+
+	<target name="create-pages">
+		<echo message="create-pages" />
+		<xmltask source="${sitexml}">
+			<call path="//page">
+				<param name="package" path="@package" default="" />
+				<param name="class" path="@id" />
+				<param name="source" path="@src" />
+				<actions>
+					<var name="is_external" unset="true" />
+					<get-page-type property="is_external" input="@{source}" domain="${base.url}" class="@{class}" package="@{package}" />
+					<if>
+						<equals arg1="${is_external}" arg2="true" />
+						<then>
+							<var name="fuppercase" unset="true" />
+							<first-uppercase property="fuppercase" input="@{class}" />
+							<var name="relative.pages.src" unset="true" />
+							<replace-dot property="relative.pages.src" input="src/${pages.full.package}" />
+							<if>
+								<equals arg1="@{package}" arg2="" />
+								<then>
+									<copy file="${templates}/Page.as" tofile="${pages.src}/@{package}/${fuppercase}Page.as" overwrite="false" encoding="UTF-8">
+										<filterchain>
+											<replacetokens>
+												<token key="PACKAGENAME" value="${pages.full.package}" />
+												<token key="CLASSNAME" value="${fuppercase}Page" />
+												<token key="IMPORT" value="" />
+												<token key="width" value="${width}" />
+												<token key="height" value="${height}" />
+												<token key="framerate" value="${framerate}" />
+												<token key="bgcolor" value="${bgcolor}" />
+											</replacetokens>
+										</filterchain>
+									</copy>
+									<create-xfl name="@{class}" document="${pages.full.package}.${fuppercase}Page" />
+									<create-launch name="${fuppercase}Page" document="${relative.pages.src}/${fuppercase}Page.as" swf="bin/@{source}" />
+								</then>
+								<else>
+									<copy file="${templates}/Page.as" tofile="${pages.src}/@{package}/${fuppercase}Page.as" overwrite="false" encoding="UTF-8">
+										<filterchain>
+											<replacetokens>
+												<token key="PACKAGENAME" value="${pages.full.package}.@{package}" />
+												<token key="CLASSNAME" value="${fuppercase}Page" />
+												<token key="IMPORT" value="import ${pages.full.package}.*;" />
+												<token key="width" value="${width}" />
+												<token key="height" value="${height}" />
+												<token key="framerate" value="${framerate}" />
+												<token key="bgcolor" value="${bgcolor}" />
+											</replacetokens>
+										</filterchain>
+									</copy>
+									<create-xfl name="@{class}" document="${pages.full.package}.@{package}.${fuppercase}Page" />
+									<create-launch name="${fuppercase}Page" document="${relative.pages.src}/${fuppercase}Page.as" swf="bin/@{source}" />
+								</else>
+							</if>
+						</then>
+					</if>
+				</actions>
+			</call>
+		</xmltask>
+	</target>
+
+	<target name="create-static-page">
+		<echo message="create-static-page" />
+		<var name="pagesconst" value="//PageConstants" />
+		<get-branch input="site" />
+		<copy file="${templates}/StaticReferencePages.as" tofile="${pages.src}/Pages.as" overwrite="true" encoding="UTF-8">
+			<filterchain>
+				<replacetokens>
+					<token key="PACKAGENAME" value="${pages.full.package}" />
+					<token key="PAGES" value="${pagesconst}" />
+				</replacetokens>
+			</filterchain>
+		</copy>
+	</target>
+
+	<target name="xml-update-bytes" description="update bytes in site.xml">
+		<echo message="xml-update-bytes" />
+		<update-page-site-xml />
+		<update-asset-site-xml />
+	</target>
+
+	<target name="xml-remove-bytes" description="remove bytes in site.xml">
+		<echo message="xml-remove-bytes" />
+		<remove-bytes-site-xml />
+	</target>
+	
+	
+
+	<macrodef name="update-bytes-page">
+		<attribute name="input" default="home" />
+		<attribute name="bytes" default="0" />
+		<attribute name="seoBytes" default="0" />
+		<sequential>
+			<echo message="@{input}" />
+			<if>
+				<equals arg1="@{seoBytes}" arg2="0" />
+				<then>
+					<xmltask source="${bin}/xml/site.xml" dest="${bin}/site3.xml">
+						<attr path="//page[@id='@{input}']" attr="bytes" value="@{bytes}" />
+						<attr path="//page[@id='@{input}']" attr="seoBytes" remove="true" />
+					</xmltask>
+				</then>
+				<else>
+					<xmltask source="${bin}/xml/site.xml" dest="${bin}/site3.xml">
+						<attr path="//page[@id='@{input}']" attr="bytes" value="@{bytes}" />
+						<attr path="//page[@id='@{input}']" attr="seoBytes" value="@{seoBytes}" />
+					</xmltask>
+				</else>
+			</if>
+			<copy file="${bin}/site3.xml" tofile="${bin}/xml/site.xml" overwrite="true" encoding="UTF-8" />
+			<delete file="${bin}/site3.xml" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="update-bytes-asset">
+		<attribute name="input" default="home" />
+		<attribute name="bytes" default="0" />
+		<sequential>
+			<echo message="@{input}" />
+			<if>
+				<equals arg1="@{bytes}" arg2="0" />
+				<then>
+					<xmltask source="${bin}/xml/site.xml" dest="${bin}/site3.xml">
+						<attr path="//asset[@id='@{input}']" attr="bytes" remove="true" />
+					</xmltask>
+				</then>
+				<else>
+					<xmltask source="${bin}/xml/site.xml" dest="${bin}/site3.xml">
+						<attr path="//asset[@id='@{input}']" attr="bytes" value="@{bytes}" />
+					</xmltask>
+				</else>
+			</if>
+			<copy file="${bin}/site3.xml" tofile="${bin}/xml/site.xml" overwrite="true" encoding="UTF-8" />
+			<delete file="${bin}/site3.xml" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="remove-bytes-site-xml">
+		<sequential>
+			<xmltask source="${bin}/xml/site.xml" dest="${bin}/site2.xml">
+				<attr path="//page" attr="bytes" remove="true" />
+				<attr path="//page" attr="seoBytes" remove="true" />
+				<attr path="//asset" attr="bytes" remove="true" />
+			</xmltask>
+			<copy file="${bin}/site2.xml" tofile="${bin}/xml/site.xml" overwrite="true" encoding="UTF-8" />
+			<delete file="${bin}/site2.xml" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="update-page-site-xml">
+		<sequential>
+			<xmltask source="${bin}/xml/site.xml" dest="${bin}/site2.xml">
+				<call path="//page">
+					<param name="swffile" path="@src" />
+					<param name="htmlfile" path="@seo" default="false" />
+					<param name="ident" path="@id" default="false" />
+					<actions>
+						<var name="branch" value="" unset="true" />
+						<var name="existSwf" value="" unset="true" />
+						<var name="existHtmlSeo" value="" unset="true" />
+						<var name="existHtmlId" value="" unset="true" />
+						<var name="bytes" unset="true" />
+						<var name="seoBytes" value="0" unset="true" />
+						<available file="${bin}/@{swffile}" property="existSwf" />
+						<available file="${bin}/@{htmlfile}" property="existHtmlSeo" />
+						<available file="${bin}/@{ident}.html" property="existHtmlId" />
+						<if>
+							<equals arg1="${existSwf}" arg2="true" />
+							<then>
+								<length file="${bin}/@{swffile}" property="bytes" />
+								<get-branch-page input="site" page="@{ident}" />
+								<if>
+									<equals arg1="${existHtmlSeo}" arg2="true" />
+									<then>
+										<length file="${bin}/@{htmlfile}" property="seoBytes" />
+									</then>
+									<elseif>
+										<and>
+											<equals arg1="${existHtmlId}" arg2="true" />
+											<not>
+												<equals arg1="@{ident}" arg2="index" />
+											</not>
+										</and>
+										<then>
+											<length file="${bin}/@{ident}.html" property="seoBytes" />
+										</then>
+									</elseif>
+									<else>
+										<var name="seoBytes" value="0" />
+									</else>
+								</if>
+								<update-bytes-page input="@{ident}" bytes="${bytes}" seoBytes="${seoBytes}" />
+							</then>
+						</if>
+					</actions>
+				</call>
+			</xmltask>
+			<delete file="${bin}/site2.xml" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="update-asset-site-xml">
+		<sequential>
+			<xmltask source="${bin}/xml/site.xml" dest="${bin}/site2.xml">
+				<call path="//asset">
+					<param name="file" path="@src" />
+					<param name="ident" path="@id" default="false" />
+					<actions>
+						<var name="branch" value="" unset="true" />
+						<var name="existFile" value="" unset="true" />
+						<var name="bytes" value="0" unset="true" />
+						<available file="${bin}/@{file}" property="existFile" />
+						<if>
+							<equals arg1="${existFile}" arg2="true" />
+							<then>
+								<length file="${bin}/@{file}" property="bytes" />
+								<update-bytes-asset input="@{ident}" bytes="${bytes}" />
+							</then>
+						</if>
+					</actions>
+				</call>
+			</xmltask>
+			<delete file="${bin}/site2.xml" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="get-branch-page">
+		<attribute name="input" default="" />
+		<attribute name="parent" default="" />
+		<attribute name="page" default="index" />
+		<sequential>
+			<echo message="get-branch-page: @{input}" />
+			<xmltask source="${sitexml}">
+				<call path="@{input}/page">
+					<param name="class" path="@id" />
+					<param name="seo" path="@seo" default="false" />
+					<actions>
+						<var name="uppercase" unset="true" />
+						<var name="lowercase" unset="true" />
+						<var name="ruta" unset="true" />
+						<uppercase property="uppercase" input="@{class}" />
+						<lowercase property="lowercase" input="@{class}" />
+						<drop-first-character property="ruta" input="@{parent}/${lowercase}" />
+						<if>
+							<equals arg1="@{class}" arg2="@{page}" />
+							<then>
+								<var name="branch" value="${ruta}" />
+							</then>
+							<else>
+								<get-branch-page input="@{input}/page" page="@{page}" parent="@{parent}/${lowercase}" />
+							</else>
+						</if>
+					</actions>
+				</call>
+			</xmltask>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="create-html-page">
+		<attribute name="name" default="index" />
+		<attribute name="branch" default="index" />
+		<attribute name="pagetitle" default="index" />
+		<sequential>
+			<copy file="${templates}/www/index.html" tofile="${bin}/@{name}" overwrite="true" encoding="UTF-8">
+				<filterchain>
+					<replacetokens>
+						<token key="title" value="${appname}" />
+						<token key="player" value="${player}" />
+						<token key="branch" value="@{branch}" />
+						<token key="baseurl" value="${base.url}" />
+						<token key="pagetitle" value="@{pagetitle}" />
+					</replacetokens>
+				</filterchain>
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="create-xfl">
+		<attribute name="name" default="" />
+		<attribute name="document" default="" />
+		<sequential>
+			<echo message="create-xfl: @{name}.xfl | @{document}" />
+			<var name="ver" unset="true" />
+			<short-version property="ver" input="${player}" />
+			<copy todir="${ide}/@{name}" overwrite="false" encoding="UTF-8">
+				<fileset dir="${templates}/ide/template" />
+			</copy>
+			<copy file="${templates}/ide/template.xfl" tofile="${ide}/@{name}/@{name}.xfl" overwrite="false" encoding="UTF-8" />
+			<copy file="${templates}/ide/DOMDocument.xml" tofile="${ide}/@{name}/DOMDocument.xml" overwrite="false" encoding="UTF-8">
+				<filterchain>
+					<replacetokens>
+						<token key="width" value="${width}" />
+						<token key="height" value="${height}" />
+						<token key="framerate" value="${framerate}" />
+						<token key="bgcolor" value="${bgcolor}" />
+					</replacetokens>
+				</filterchain>
+			</copy>
+			<copy file="${templates}/ide/PublishSettings.xml" tofile="${ide}/@{name}/PublishSettings.xml" overwrite="false" encoding="UTF-8">
+				<filterchain>
+					<replacetokens>
+						<token key="name" value="@{name}" />
+						<token key="document" value="@{document}" />
+						<token key="version" value="${ver}" />
+						<token key="width" value="${width}" />
+						<token key="height" value="${height}" />
+					</replacetokens>
+				</filterchain>
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="create-launch">
+		<attribute name="name" default="" />
+		<attribute name="document" default="" />
+		<attribute name="swf" default="" />
+		<sequential>
+			<if>
+				<equals arg1="${fdt}" arg2="true" />
+				<then>
+					<echo message="create-launch: @{name}" />
+					<copy file="${templates}/Page.launch" tofile="${settings}/launch/${appname} - @{name}.launch" overwrite="false" encoding="UTF-8">
+						<filterchain>
+							<replacetokens>
+								<token key="appname" value="${appname}" />
+								<token key="width" value="${width}" />
+								<token key="height" value="${height}" />
+								<token key="document" value="@{document}" />
+								<token key="swf" value="@{swf}" />
+							</replacetokens>
+						</filterchain>
+					</copy>
+				</then>
+			</if>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="create-sitemap">
+		<attribute name="sitemap" default="" />
+		<sequential>
+			<copy file="${templates}/www/sitemap.xml" tofile="${bin}/sitemap.xml" overwrite="true" encoding="UTF-8">
+				<filterchain>
+					<replacetokens>
+						<token key="sitemap" value="@{sitemap}" />
+					</replacetokens>
+				</filterchain>
+			</copy>
+			<echo message="@{sitemap}" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="add-seo-menu">
+		<attribute name="seomenu" default="" />
+		<sequential>
+			<copy todir="${bin}" overwrite="true" encoding="UTF-8">
+				<fileset dir="${bin}/noseo">
+
+				</fileset>
+				<filterchain>
+					<replacetokens>
+						<token key="seo" value="@{seomenu}" />
+					</replacetokens>
+				</filterchain>
+			</copy>
+			<echo message="@{seomenu}" />
+		</sequential>
+	</macrodef>
+
+	<target name="seo-html">
+		<mkdir dir="${bin}/noseo" />
+
+		<var name="menu" value="" unset="true" />
+		<var name="branch" value="" unset="true" />
+
+		<create-html-page name="noseo/index.html" branch="index" pagetitle="${appname}" />
+
+		<var name="menu" value="&lt;li>&lt;a href='${base.url}'>Index&lt;/a>&lt;/li>${line.separator}" />
+		<var name="sitemap" value="&lt;url>&lt;loc>${base.url}/index.html&lt;/loc>&lt;/url>${line.separator}" />
+		<xmltask source="${sitexml}">
+			<call path="//page[@seo]">
+				<param name="id" path="@id" default="NO ID" />
+				<param name="seo" path="@seo" default="false" />
+				<param name="title" path="@title" default="" />
+				<actions>
+					<if>
+						<equals arg1="@{seo}" arg2="true" />
+						<then>
+							<echo message="@{id}" />
+							<get-branch-page input="site" page="@{id}" />
+							<echo message="${branch}" />
+							<create-html-page name="noseo/@{id}.html" branch="${branch}" pagetitle="@{title}" />
+							<var name="menu" value="${menu}&lt;li>&lt;a href='${base.url}/@{id}.html'>@{title}&lt;/a>&lt;/li>${line.separator}" />
+							<var name="sitemap" value="${sitemap}&lt;url>&lt;loc>${base.url}/@{id}.html&lt;/loc>&lt;/url>${line.separator}" />
+						</then>
+						<else>
+							<!-- custom seo path -->
+							<echo message="@{seo}" />
+							<get-branch-page input="site" page="@{id}" />
+							<echo message="${branch}" />
+							<create-html-page name="noseo/@{seo}" branch="${branch}" pagetitle="@{title}" />
+							<var name="menu" value="${menu}&lt;li>&lt;a href='${base.url}/@{seo}'>@{title}&lt;/a>&lt;/li>${line.separator}" />
+							<var name="sitemap" value="${sitemap}&lt;url>&lt;loc>${base.url}/@{seo}&lt;/loc>&lt;/url>${line.separator}" />
+						</else>
+					</if>
+
+				</actions>
+			</call>
+		</xmltask>
+
+		<echo message="${menu}" />
+		<add-seo-menu seomenu="${menu}" />
+
+		<create-sitemap sitemap="${sitemap}" />
+
+		<delete dir="${bin}/noseo" />
+	</target>
+
+	<!-- Compile -->
+	<target name="compile-pages" description="compile-pages">
+		<echo message="compile-pages" />
+		<xmltask source="${sitexml}">
+			<call path="//page">
+				<param name="id" path="@id" default="NO ID" />
+				<param name="dest" path="@src" default="NO ID" />
+				<param name="pack" path="@package" default="" />
+				<actions>
+					<var name="is_external" unset="true" />
+					<var name="existPageClass" unset="true" />
+					<get-page-type property="is_external" input="@{dest}" domain="${base.url}" class="@{id}" package="${package}" />
+					<if>
+						<equals arg1="${is_external}" arg2="true" />
+						<then>
+							<var name="fuppercase" unset="true" />
+							<first-uppercase property="fuppercase" input="@{id}" />
+							<if>
+								<equals arg1="@{package}" arg2="" />
+								<then>
+									<available file="${pages.src}/${fuppercase}Page.as" property="existPageClass" />
+									<if>
+										<equals arg1="${existPageClass}" arg2="true" />
+										<then>
+											<compile source="${pages.src}/${fuppercase}Page.as" target="${bin}/@{dest}" debug="false" />
+										</then>
+										<else>
+											<echo message="${pages.src}/${fuppercase}Page.as no exist, skipped." />
+										</else>
+									</if>
+								</then>
+								<else>
+									<available file="${pages.src}/@{pack}/${fuppercase}Page.as" property="existPageClass" />
+									<if>
+										<equals arg1="${existPageClass}" arg2="true" />
+										<then>
+											<compile source="${pages.src}/@{pack}/${fuppercase}Page.as" target="${bin}/@{dest}" debug="false" />
+										</then>
+										<else>
+											<echo message="${pages.src}/@{pack}/${fuppercase}Page.as no exist, skipped." />
+										</else>
+									</if>
+								</else>
+							</if>
+						</then>
+					</if>
+				</actions>
+			</call>
+		</xmltask>
+	</target>
+	
+	<target name="debug-pages" description="debug-pages">
+			<echo message="debug-pages" />
+			<xmltask source="${sitexml}">
+				<call path="//page">
+					<param name="id" path="@id" default="NO ID" />
+					<param name="dest" path="@src" default="NO ID" />
+					<param name="pack" path="@package" default="" />
+					<actions>
+						<var name="is_external" unset="true" />
+						<var name="existPageClass" unset="true" />
+						<get-page-type property="is_external" input="@{dest}" domain="${base.url}" class="@{id}" package="${package}" />
+						<if>
+							<equals arg1="${is_external}" arg2="true" />
+							<then>
+								<var name="fuppercase" unset="true" />
+								<first-uppercase property="fuppercase" input="@{id}" />
+								<if>
+									<equals arg1="@{package}" arg2="" />
+									<then>
+										<available file="${pages.src}/${fuppercase}Page.as" property="existPageClass" />
+										<if>
+											<equals arg1="${existPageClass}" arg2="true" />
+											<then>
+												<compile source="${pages.src}/${fuppercase}Page.as" target="${bin}/@{dest}" debug="true" />
+											</then>
+											<else>
+												<echo message="${pages.src}/${fuppercase}Page.as no exist, skipped." />
+											</else>
+										</if>
+									</then>
+									<else>
+										<available file="${pages.src}/@{pack}/${fuppercase}Page.as" property="existPageClass" />
+										<if>
+											<equals arg1="${existPageClass}" arg2="true" />
+											<then>
+												<compile source="${pages.src}/@{pack}/${fuppercase}Page.as" target="${bin}/@{dest}" debug="true" />
+											</then>
+											<else>
+												<echo message="${pages.src}/@{pack}/${fuppercase}Page.as no exist, skipped." />
+											</else>
+										</if>
+									</else>
+								</if>
+							</then>
+						</if>
+					</actions>
+				</call>
+			</xmltask>
+		</target>
+
+	<target name="compile-preloader" description="compile-preloader">
+		<echo message="compile-preloader" />
+		<compile source="${pages.src}/Preloader.as" target="${bin}/preload.swf" debug="false" />
+	</target>
+	
+	<target name="debug-preloader" description="debug-preloader">
+		<echo message="debug-preloader" />
+		<compile source="${pages.src}/Preloader.as" target="${bin}/preload.swf" debug="true" />
+	</target>
+
+	<target name="compile-main" description="compile-main">
+		<echo message="compile-main" />
+		<compile source="${src}/Main.as" target="${bin}/main.swf" debug="false" />
+		<!--
+	    <exec executable="${flashplayer}">
+	        <arg line="${gaia.bin}/main.swf" />
+	    </exec>
+	    -->
+	</target>
+	
+	<target name="debug-main" description="debug-main">
+		<echo message="debug-main" />
+		<compile source="${src}/Main.as" target="${bin}/main.swf" debug="true" />
+	</target>
+
+	<macrodef name="compile">
+		<attribute name="source" />
+		<attribute name="target" default="bin" />
+		<attribute name="debug" default="false" />
+		<sequential>
+			<if>
+				<equals arg1="${fdt}" arg2="true" />
+				<then>
+					<fdt.loadProjectProperties projectname="${appname}" />
+					<fdt.launch.application projectname="${FDTProject}" mainclass="@{source}" target="@{target}" debug="@{debug}" />
+				</then>
+				<else>
+					<mxmlc file="@{source}" output="@{target}" debug="@{debug}" target-player="${player}" optimize="true">
+							
+					<compiler.library-path dir="${lib}">
+						<include name="**/*.swc" />
+						<include name="${project.lib.linked0}" />
+						<include name="${project.lib.linked1}" />
+						<include name="${project.lib.linked2}" />
+						<exclude name="${project.lib.exclude0}" />
+						<exclude name="${project.lib.exclude1}" />
+						<exclude name="${project.lib.exclude2}" />
+					</compiler.library-path>
+	
+					<!--
+	    	    	<compiler.external-library-path dir="${lib}">
+	    	    		<include name="**/*.swc" />
+	    	    		<include name="${project.lib.linked0}" />
+	    	    		<include name="${project.lib.linked1}" />
+	    	    		<include name="${project.lib.linked2}" />
+						<exclude name="${project.lib.exclude0}" />
+						<exclude name="${project.lib.exclude1}" />
+						<exclude name="${project.lib.exclude2}" />
+					</compiler.external-library-path>
+					-->
+	
+					<load-config filename="${FLEX_HOME}/frameworks/flex-config.xml" />
+	
+					<static-link-runtime-shared-libraries>true</static-link-runtime-shared-libraries>
+	
+					<compiler.keep-as3-metadata name="Inject" />
+					<compiler.keep-as3-metadata name="PostConstruct" />
+	
+					<source-path path-element="${FLEX_HOME}/frameworks" />
+					<source-path path-element="${src}" />
+				</mxmlc>
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="get-branch">
+		<attribute name="input" default="" />
+		<attribute name="parent" default="" />
+		<sequential>
+			<echo message="get-branch: @{input} | @{parent}" />
+			<xmltask source="${sitexml}">
+				<call path="@{input}/page">
+					<param name="class" path="@id" />
+					<actions>
+						<var name="uppercase" unset="true" />
+						<var name="ruta" unset="true" />
+						<uppercase property="uppercase" input="@{class}" />
+						<drop-first-character property="ruta" input="@{parent}/@{class}" />
+						<var name="pagesconst" value="${pagesconst}${line.separator}        public static const ${uppercase}:String = '${ruta}';" />
+						<get-branch input="@{input}/page[@id='@{class}']" parent="@{parent}/@{class}" />
+					</actions>
+				</call>
+			</xmltask>
+		</sequential>
+	</macrodef>
+	
+
+	<target name="create-build-info">
+		<tstamp>
+			<format property="TODAY" pattern="yyyy-MM-dd HH:mm" locale="en,UK" />
+		</tstamp>
+		<echo file="${bin}/${buildInfo}">Author:					${user.name}
+Date:					${TODAY}
+Project:				${appname}
+Target player:			${player}
+RobotGaiaAnt version:	${version}
+Built on:				${os.name} (${os.version})</echo>
+	</target>
+</project>

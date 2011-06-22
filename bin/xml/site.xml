@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<site title="RGADemo: %PAGE%" menu="true">
+	<page id="index" src="index.swf">
+		<page id="nav" src="nav.swf" depth="top">
+			<page id="home" title="Home" src="home.swf" menu="true" />
+			<page id="member" title="Member" src="member.swf" menu="true" />
+		</page>
+	</page>
+</site>
